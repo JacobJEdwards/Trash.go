@@ -29,6 +29,12 @@ func main() {
 
 	if *empty {
 		fmt.Println("Emptying the trash")
+        err := app.EmptyTrash(&config)
+
+        if err != nil {
+            fmt.Println(err)
+            os.Exit(1)
+        }
 	}
 
 	if *restoreAll {
@@ -40,8 +46,18 @@ func main() {
 	}
 
 	if *view {
-        fmt.Println("Viewing the trash")
-        app.GetLog(&config)
+		fmt.Println("Viewing the trash")
+		logEntries, err := app.GetLog(&config)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for _, logEntry := range logEntries {
+			fmt.Println(logEntry)
+		}
+
+		return
 	}
 
 	for _, arg := range args {
