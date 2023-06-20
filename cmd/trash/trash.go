@@ -141,6 +141,14 @@ func (cli *TrashCLI) deleteFile(file string) {
 
 func (cli *TrashCLI) trashFiles(files []string) {
 	for _, fileName := range files {
+
+		_, err := os.Stat(fileName)
+
+		if err != nil {
+			fmt.Printf("Error using file: %v", err)
+			continue
+		}
+
 		file, err := os.Open(fileName)
 
 		if err != nil {
