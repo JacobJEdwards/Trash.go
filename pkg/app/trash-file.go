@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"github.com/JacobJEdwards/Trash.go/pkg/config"
 	"os"
@@ -9,20 +10,11 @@ import (
 
 func TrashFiles(files []*os.File, c *config.Config) error {
 	for _, file := range files {
-		// Get the path to the trash directory
-		trashDir := filepath.Join(c.TrashDir, file.Name())
 
-		// Move the file to the trash directory
-		err := os.Rename(file.Name(), trashDir)
+		err := TrashFile(file, c)
 
 		if err != nil {
-			return fmt.Errorf("Error moving file %s to trash directory %s: %s", file.Name(), trashDir, err)
-		}
-
-		err = SetLog(file, c)
-
-		if err != nil {
-			return fmt.Errorf("Error setting log for file %s: %s", file.Name(), err)
+			return err
 		}
 	}
 
@@ -31,18 +23,30 @@ func TrashFiles(files []*os.File, c *config.Config) error {
 
 func TrashFile(file *os.File, c *config.Config) error {
 	// Get the path to the trash directory
-	trashDir := filepath.Join(c.TrashDir, file.Name())
+	fileName := filepath.Base(file.Name())
+
+	if fileName == "." || fileName == ".." || fileName == filepath.Base(c.TrashDir) || fileName == filepath.Base(c.Logfile) {
+		return errors.New(fmt.Sprintf("Error trashing file %s: file name is invalid", file.Name()))
+	}
+
+	trashDir := filepath.Join(c.TrashDir, fileName)
+	absPath, err := filepath.Abs(file.Name())
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Error getting absolute path for file %s: %s", file.Name(), err))
+	}
 
 	// Move the file to the trash directory
-	err := os.Rename(file.Name(), trashDir)
+	err = os.Rename(absPath, trashDir)
+
 	if err != nil {
-		return fmt.Errorf("Error moving file %s to trash directory %s: %s", file.Name(), trashDir, err)
+		return errors.New(fmt.Sprintf("Error moving file %s to trash directory %s: %s", file.Name(), trashDir, err))
 	}
 
 	err = SetLog(file, c)
 
 	if err != nil {
-		return fmt.Errorf("Error setting log for file %s: %s", file.Name(), err)
+		return errors.New(fmt.Sprintf("Error setting log for file %s: %s", file.Name(), err))
 	}
 
 	return nil

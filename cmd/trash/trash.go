@@ -93,7 +93,7 @@ func (cli *TrashCLI) viewTrash() {
 	logEntries, err := app.GetLog(cli.config)
 
 	if err != nil {
-		fmt.Printf("error getting log: %v", err)
+		fmt.Printf("error getting log: %v\n", err)
 	}
 
 	if len(logEntries) == 0 {
@@ -110,7 +110,7 @@ func (cli *TrashCLI) clearTrash() {
 	err := app.EmptyTrash(cli.config)
 
 	if err != nil {
-		fmt.Printf("Error emptying trash: %v", err)
+		fmt.Printf("Error emptying trash: %v\n", err)
 	}
 
 	return
@@ -120,7 +120,7 @@ func (cli *TrashCLI) restoreAllFiles() {
 	logEntries, err := app.RestoreAll(cli.config)
 
 	if err != nil {
-		fmt.Printf("Error restoring all files: %v", err)
+		fmt.Printf("Error restoring all files: %v\n", err)
 		return
 	}
 
@@ -139,7 +139,7 @@ func (cli *TrashCLI) restoreFile(file string) {
 	fileEntry, err := app.RestoreFile(file, cli.config)
 
 	if err != nil {
-		fmt.Printf("Error restoring file: %v", err)
+		fmt.Printf("Error restoring file: %v\n", err)
 	}
 
 	formattedTime := fileEntry.TrashTime.Format("2006-01-02 15:04:05")
@@ -160,14 +160,14 @@ func (cli *TrashCLI) trashFiles(files []string) {
 		_, err := os.Stat(fileName)
 
 		if err != nil {
-			fmt.Printf("Error using file: %v", err)
+			fmt.Printf("Error using file: %v\n", err)
 			continue
 		}
 
 		file, err := os.Open(fileName)
 
 		if err != nil {
-			fmt.Printf("Error using file: %v", err)
+			fmt.Printf("Error using file: %v\n", err)
 			continue
 		}
 
@@ -176,7 +176,8 @@ func (cli *TrashCLI) trashFiles(files []string) {
 		err = app.TrashFile(file, cli.config)
 
 		if err != nil {
-			fmt.Printf("Error trashing file: %v", err)
+			fmt.Printf("Error trashing file: %v\n", err)
+			return
 		}
 
 		fmt.Printf("Trashed %s\n", fileName)
@@ -185,34 +186,34 @@ func (cli *TrashCLI) trashFiles(files []string) {
 
 func printUsage() {
 	fmt.Println("Usage: trash [flags] [files...]")
-    fmt.Println("")
+	fmt.Println("")
 	fmt.Println("Flags:")
-    fmt.Println("")
-    fmt.Println("  -h, --help")
-    fmt.Println("        Print this help message")
-    fmt.Println("")
-    fmt.Println("  -v, --view")
-    fmt.Println("        View the trash")
-    fmt.Println("")
-    fmt.Println("  -e, --empty")
-    fmt.Println("        Empty the trash")
-    fmt.Println("")
-    fmt.Println("  -ra, --restore-all")
-    fmt.Println("        Restore all files")
-    fmt.Println("")
-    fmt.Println("  -r, --restore")
-    fmt.Println("        Restore a file")
-    fmt.Println("")
-    fmt.Println("  -rm, --delete")
-    fmt.Println("        Delete a file")
-    fmt.Println("")
+	fmt.Println("")
+	fmt.Println("  -h, --help")
+	fmt.Println("        Print this help message")
+	fmt.Println("")
+	fmt.Println("  -v, --view")
+	fmt.Println("        View the trash")
+	fmt.Println("")
+	fmt.Println("  -e, --empty")
+	fmt.Println("        Empty the trash")
+	fmt.Println("")
+	fmt.Println("  -ra, --restore-all")
+	fmt.Println("        Restore all files")
+	fmt.Println("")
+	fmt.Println("  -r, --restore")
+	fmt.Println("        Restore a file")
+	fmt.Println("")
+	fmt.Println("  -rm, --delete")
+	fmt.Println("        Delete a file")
+	fmt.Println("")
 }
 
 func main() {
 	cli, err := NewTrashCLI()
 
 	if err != nil {
-		fmt.Printf("Error creating CLI: %v", err)
+		fmt.Printf("Error creating CLI: %v\n", err)
 		return
 	}
 
