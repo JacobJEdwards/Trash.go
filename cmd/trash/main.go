@@ -10,112 +10,177 @@ import (
 )
 
 var (
-	view       = flag.Bool("view", false, "view the trash")
-	emptyTrash = flag.Bool("empty", false, "empty the trash")
-	restoreAll = flag.Bool("restore-all", false, "restore all files")
-	restore    = flag.String("restore", "", "restore a file")
+	view       bool
+	emptyTrash bool
+	restoreAll bool
+	restore    string
+	rm         string
 )
 
-func main() {
-	flag.Parse()
-	args := flag.Args()
+type TrashCLI struct {
+	config *config.Config
+}
 
-	if flag.NFlag() > 1 {
-		fmt.Println("Only one flag can be passed at a time")
-		return
-	}
-	if flag.NFlag() == 0 && len(args) == 0 {
-		fmt.Println("No arguments passed")
-		return
-	}
+func init() {
+	flag.BoolVar(&view, "view", false, "view the trash")
+	flag.BoolVar(&emptyTrash, "empty", false, "empty the trash")
+	flag.BoolVar(&restoreAll, "restore-all", false, "restore all files")
+	flag.StringVar(&restore, "restore", "", "restore a file")
+	flag.StringVar(&rm, "rm", "", "trash a file")
 
+}
+
+func NewTrashCLI() (*TrashCLI, error) {
 	config, err := config.LoadConfig()
 
 	if err != nil {
-		fmt.Printf("error loading config: %v", err)
+		return nil, err
+	}
+
+	flag.Parse()
+	flag.Usage = printUsage
+
+	return &TrashCLI{
+		config: config,
+	}, nil
+}
+
+func (cli *TrashCLI) Run() {
+	if flag.NFlag() == 0 && len(flag.Args()) == 0 {
+		fmt.Println("Error: must pass exactly one flag or at least one file")
+		flag.Usage()
 		return
 	}
 
-	if *emptyTrash {
-		fmt.Println("Emptying the trash")
-		err := app.EmptyTrash(config)
+	if flag.NFlag() > 1 {
+		fmt.Println("Error: must pass exactly one flag or at least one file")
+		flag.Usage()
+		return
+	}
+
+	switch {
+	case view:
+		cli.viewTrash()
+	case emptyTrash:
+		cli.clearTrash()
+	case restoreAll:
+		cli.restoreAllFiles()
+	case restore != "":
+		cli.restoreFile(restore)
+	case rm != "":
+		cli.deleteFile(rm)
+	default:
+		cli.trashFiles(flag.Args())
+	}
+}
+
+func (cli *TrashCLI) viewTrash() {
+	logEntries, err := app.GetLog(cli.config)
+
+	if err != nil {
+		fmt.Printf("error getting log: %v", err)
+	}
+
+	if len(logEntries) == 0 {
+		fmt.Println("Trash is empty")
+		return
+	}
+
+	cli.outputLogEntries(logEntries)
+
+	return
+}
+
+func (cli *TrashCLI) clearTrash() {
+	err := app.EmptyTrash(cli.config)
+
+	if err != nil {
+		fmt.Printf("Error emptying trash: %v", err)
+	}
+
+	return
+}
+
+func (cli *TrashCLI) restoreAllFiles() {
+	logEntries, err := app.RestoreAll(cli.config)
+
+	if err != nil {
+		fmt.Printf("Error restoring all files: %v", err)
+		return
+	}
+
+	if len(logEntries) == 0 {
+		fmt.Println("Trash is empty")
+		return
+	}
+
+	fmt.Println("Restored files:")
+	cli.outputLogEntries(logEntries)
+
+	return
+}
+
+func (cli *TrashCLI) restoreFile(file string) {
+	fileEntry, err := app.RestoreFile(file, cli.config)
+
+	if err != nil {
+		fmt.Printf("Error restoring file: %v", err)
+	}
+
+	formattedTime := fileEntry.TrashTime.Format("2006-01-02 15:04:05")
+	outString := fmt.Sprintf("%s %s %s", formattedTime, fileEntry.OriginalName, fileEntry.OriginalPath)
+
+	fmt.Printf("Restored %s\n", outString)
+
+	return
+}
+
+func (cli *TrashCLI) deleteFile(file string) {
+	return
+}
+
+func (cli *TrashCLI) trashFiles(files []string) {
+	for _, fileName := range files {
+		file, err := os.Open(fileName)
 
 		if err != nil {
-			fmt.Printf("Error emptying trash: %v", err)
-		}
-
-		return
-	}
-
-	if *restoreAll {
-		fmt.Println("Restoring all files")
-        _, err := app.RestoreAll(config)
-
-        if err != nil {
-            fmt.Printf("Error restoring all files: %v", err)
-        }
-
-		return
-	}
-
-	if *restore != "" {
-		fmt.Println("Restoring a file")
-
-        file, err := app.RestoreFile(*restore, config)
-
-		if err != nil {
-			fmt.Printf("Error restoring file: %v", err)
-		}
-
-		formattedTime := file.TrashTime.Format("2006-01-02 15:04:05")
-		outString := fmt.Sprintf("%s %s %s", formattedTime, file.OriginalName, file.OriginalPath)
-		fmt.Printf("Restored %s\n", outString)
-
-		return
-	}
-
-	if *view {
-		fmt.Println("Viewing the trash\n")
-		logEntries, err := app.GetLog(config)
-
-		if err != nil {
-			fmt.Printf("error getting log: %v", err)
-		}
-
-		if len(logEntries) == 0 {
-			fmt.Println("Trash is empty")
-			return
-		}
-
-		for _, logEntry := range logEntries {
-			formattedTime := logEntry.TrashTime.Format("2006-01-02 15:04:05")
-			outString := fmt.Sprintf("%s %s %s", formattedTime, logEntry.OriginalName, logEntry.OriginalPath)
-			fmt.Println(outString)
-		}
-
-		return
-	}
-
-	// If no flags are passed, assume the user wants to trash a file
-	for _, arg := range args {
-		file, err := os.Open(arg)
-
-		if err != nil {
-			fmt.Printf("Error opening file: %v", err)
-			return
+			fmt.Printf("Error using file: %v", err)
+			continue
 		}
 
 		defer file.Close()
 
-		err = app.TrashFile(file, config)
+		err = app.TrashFile(file, cli.config)
 
 		if err != nil {
 			fmt.Printf("Error trashing file: %v", err)
-			return
 		}
 
-		fmt.Printf("Trashed %s\n", arg)
+		fmt.Printf("Trashed %s\n", fileName)
+	}
+}
+
+func printUsage() {
+	fmt.Println("Usage: trash [flags] [files...]")
+	fmt.Println("Flags:")
+	flag.PrintDefaults()
+}
+
+func main() {
+	cli, err := NewTrashCLI()
+
+	if err != nil {
+		fmt.Printf("Error creating CLI: %v", err)
+		return
 	}
 
-	return
+	cli.Run()
+}
+
+func (cli *TrashCLI) outputLogEntries(logEntries []app.LogEntry) {
+	for _, logEntry := range logEntries {
+		formattedTime := logEntry.TrashTime.Format("2006-01-02 15:04:05")
+		outString := fmt.Sprintf("%s %s %s", formattedTime, logEntry.OriginalName, logEntry.OriginalPath)
+		fmt.Println(outString)
+	}
 }
