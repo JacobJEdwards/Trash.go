@@ -11,6 +11,7 @@ import (
 
 var (
 	view       bool
+	help       bool
 	emptyTrash bool
 	restoreAll bool
 	restore    string
@@ -22,10 +23,22 @@ type TrashCLI struct {
 }
 
 func init() {
+	flag.BoolVar(&help, "help", false, "print help")
+	flag.BoolVar(&help, "h", false, "print help")
+
 	flag.BoolVar(&view, "view", false, "view the trash")
+	flag.BoolVar(&view, "v", false, "view the trash")
+
 	flag.BoolVar(&emptyTrash, "empty", false, "empty the trash")
+	flag.BoolVar(&emptyTrash, "e", false, "empty the trash")
+
 	flag.BoolVar(&restoreAll, "restore-all", false, "restore all files")
+	flag.BoolVar(&restoreAll, "ra", false, "restore all files")
+
 	flag.StringVar(&restore, "restore", "", "restore a file")
+	flag.StringVar(&restore, "r", "", "restore a file")
+
+	flag.StringVar(&rm, "delete", "", "trash a file")
 	flag.StringVar(&rm, "rm", "", "trash a file")
 
 }
@@ -59,6 +72,8 @@ func (cli *TrashCLI) Run() {
 	}
 
 	switch {
+	case help:
+		flag.Usage()
 	case view:
 		cli.viewTrash()
 	case emptyTrash:
@@ -170,8 +185,27 @@ func (cli *TrashCLI) trashFiles(files []string) {
 
 func printUsage() {
 	fmt.Println("Usage: trash [flags] [files...]")
+    fmt.Println("")
 	fmt.Println("Flags:")
-	flag.PrintDefaults()
+    fmt.Println("")
+    fmt.Println("  -h, --help")
+    fmt.Println("        Print this help message")
+    fmt.Println("")
+    fmt.Println("  -v, --view")
+    fmt.Println("        View the trash")
+    fmt.Println("")
+    fmt.Println("  -e, --empty")
+    fmt.Println("        Empty the trash")
+    fmt.Println("")
+    fmt.Println("  -ra, --restore-all")
+    fmt.Println("        Restore all files")
+    fmt.Println("")
+    fmt.Println("  -r, --restore")
+    fmt.Println("        Restore a file")
+    fmt.Println("")
+    fmt.Println("  -rm, --delete")
+    fmt.Println("        Delete a file")
+    fmt.Println("")
 }
 
 func main() {
