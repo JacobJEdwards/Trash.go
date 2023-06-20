@@ -1,0 +1,2 @@
+# Trash.go
+Trash CLI
