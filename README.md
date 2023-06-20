@@ -1,2 +1,5 @@
 # Trash.go
-Trash CLI
+
+CLI utility to `trash` files rather than permanently deleting them. 
+
+Written with **Go**.
