@@ -11,22 +11,21 @@ import (
 
 func EmptyTrash(c *config.Config) error {
 	trashDir := c.TrashDir
-	logFile := c.Logfile
+	logFilepath := c.Logfile
+
+    if _, err := os.Stat(logFilepath); os.IsNotExist(err) {
+        return fmt.Errorf("Log file does not exist: %s", logFilepath)
+    }
+
+    if _, err := os.Stat(trashDir); os.IsNotExist(err) {
+        return fmt.Errorf("Trash directory does not exist: %s", trashDir)
+    }
 
 	proceed := utils.ProceedTask("Are you sure you want to empty the trash? [y/N] ")
 
 	if !proceed {
 		return nil
 	}
-
-	log, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-
-	if err != nil {
-		return err
-	}
-
-	defer log.Close()
-
 	files, err := os.ReadDir(trashDir)
 
 	if err != nil {
@@ -42,7 +41,7 @@ func EmptyTrash(c *config.Config) error {
 		}
 	}
 
-	err = os.Truncate(logFile, 0)
+	err = os.Truncate(logFilepath, 0)
 
 	if err != nil {
 		return fmt.Errorf("Error writing to log file: %v", err)

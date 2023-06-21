@@ -102,8 +102,6 @@ func (cli *TrashCLI) viewTrash() {
 	}
 
 	app.OutputLogEntries(logEntries)
-
-	return
 }
 
 func (cli *TrashCLI) clearTrash() {
@@ -112,8 +110,6 @@ func (cli *TrashCLI) clearTrash() {
 	if err != nil {
 		fmt.Printf("Error emptying trash: %v\n", err)
 	}
-
-	return
 }
 
 func (cli *TrashCLI) restoreAllFiles() {
@@ -131,8 +127,6 @@ func (cli *TrashCLI) restoreAllFiles() {
 
 	fmt.Println("Restored files:")
 	app.OutputLogEntries(logEntries)
-
-	return
 }
 
 func (cli *TrashCLI) restoreFile(file string) {
@@ -144,8 +138,6 @@ func (cli *TrashCLI) restoreFile(file string) {
 
     fmt.Println("Restored:")
     app.OutputLogEntry(fileEntry)
-
-	return
 }
 
 func (cli *TrashCLI) deleteFile(file string) {
@@ -157,8 +149,6 @@ func (cli *TrashCLI) deleteFile(file string) {
 
     fmt.Println("Deleted:")
     app.OutputLogEntry(fileEntry)
-
-	return
 }
 
 func (cli *TrashCLI) trashFiles(files []string) {
