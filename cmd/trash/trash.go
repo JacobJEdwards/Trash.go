@@ -101,7 +101,7 @@ func (cli *TrashCLI) viewTrash() {
 		return
 	}
 
-	cli.outputLogEntries(logEntries)
+	app.OutputLogEntries(logEntries)
 
 	return
 }
@@ -130,7 +130,7 @@ func (cli *TrashCLI) restoreAllFiles() {
 	}
 
 	fmt.Println("Restored files:")
-	cli.outputLogEntries(logEntries)
+	app.OutputLogEntries(logEntries)
 
 	return
 }
@@ -142,24 +142,29 @@ func (cli *TrashCLI) restoreFile(file string) {
 		fmt.Printf("Error restoring file: %v\n", err)
 	}
 
-	formattedTime := fileEntry.TrashTime.Format("2006-01-02 15:04:05")
-	outString := fmt.Sprintf("%s %s %s", formattedTime, fileEntry.OriginalName, fileEntry.OriginalPath)
-
-	fmt.Printf("Restored %s\n", outString)
+    fmt.Println("Restored:")
+    app.OutputLogEntry(fileEntry)
 
 	return
 }
 
 func (cli *TrashCLI) deleteFile(file string) {
+	fileEntry, err := app.DeleteFile(file, cli.config)
+
+	if err != nil {
+		fmt.Printf("Error deleting file: %v\n", err)
+	}
+
+    fmt.Println("Deleted:")
+    app.OutputLogEntry(fileEntry)
+
 	return
 }
 
 func (cli *TrashCLI) trashFiles(files []string) {
 	for _, fileName := range files {
 
-		_, err := os.Stat(fileName)
-
-		if err != nil {
+		if _, err := os.Stat(fileName); err != nil {
 			fmt.Printf("Error using file: %v\n", err)
 			continue
 		}
@@ -220,10 +225,3 @@ func main() {
 	cli.Run()
 }
 
-func (cli *TrashCLI) outputLogEntries(logEntries []app.LogEntry) {
-	for _, logEntry := range logEntries {
-		formattedTime := logEntry.TrashTime.Format("2006-01-02 15:04:05")
-		outString := fmt.Sprintf("%s %s %s", formattedTime, logEntry.OriginalName, logEntry.OriginalPath)
-		fmt.Println(outString)
-	}
-}

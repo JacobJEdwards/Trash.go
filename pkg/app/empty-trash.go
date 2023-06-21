@@ -6,12 +6,14 @@ import (
 	"path/filepath"
 
 	"github.com/JacobJEdwards/Trash.go/pkg/config"
+	"github.com/JacobJEdwards/Trash.go/pkg/utils"
 )
 
 func EmptyTrash(c *config.Config) error {
 	trashDir := c.TrashDir
 	logFile := c.Logfile
-	proceed := proceedEmptyTrash()
+
+	proceed := utils.ProceedTask("Are you sure you want to empty the trash? [y/N] ")
 
 	if !proceed {
 		return nil
@@ -47,22 +49,4 @@ func EmptyTrash(c *config.Config) error {
 	}
 
 	return nil
-}
-
-func proceedEmptyTrash() bool {
-	var proceed string
-
-	fmt.Print("Are you sure you want to empty the trash? [y/N] ")
-	_, err := fmt.Scanln(&proceed)
-
-	if err != nil {
-		return false
-	}
-
-	switch proceed {
-	case "y", "Y", "yes", "Yes":
-		return true
-	default:
-		return false
-	}
 }

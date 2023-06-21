@@ -18,10 +18,6 @@ type LogEntry struct {
 	OriginalPath string
 }
 
-func generateLogFileEntry(logEntry *LogEntry) string {
-	return fmt.Sprintf("%v %v %v\n", logEntry.TrashTime.Format(time.RFC3339), logEntry.OriginalName, logEntry.OriginalPath)
-}
-
 func SetLog(trashedFile *os.File, c *config.Config) error {
 	logFile := c.Logfile
 
@@ -51,7 +47,7 @@ func SetLog(trashedFile *os.File, c *config.Config) error {
 		OriginalPath: absPath,
 	}
 
-	logEntryString := generateLogFileEntry(&logEntry)
+	logEntryString := GenerateLogFileEntry(&logEntry)
 
 	_, err = file.WriteString(logEntryString)
 
@@ -106,28 +102,35 @@ func GetLog(c *config.Config) ([]LogEntry, error) {
 	return logEntries, nil
 }
 
-func RemoveLog(logEntry *LogEntry, c *config.Config) error {
+func RemoveLog(filename string, c *config.Config) (*LogEntry, error) {
+
 	logEntries, err := GetLog(c)
+	var foundEntry LogEntry
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to get log entries: %v", err))
+		return nil, errors.New(fmt.Sprintf("Failed to get log entries: %v", err))
 	}
 
 	for i, entry := range logEntries {
-		if entry.OriginalPath == logEntry.OriginalPath {
+		if entry.OriginalName == filename {
 			logEntries = append(logEntries[:i], logEntries[i+1:]...)
+			foundEntry = entry
 
 			break
 		}
 	}
 
+	if foundEntry == (LogEntry{}) {
+		return nil, errors.New(fmt.Sprintf("Failed to find log entry for '%s'", filename))
+	}
+
 	err = WriteAllEntries(logEntries, c)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to write log entries: %v", err))
+		return &foundEntry, errors.New(fmt.Sprintf("Failed to write log entries: %v", err))
 	}
 
-	return nil
+	return &foundEntry, nil
 }
 
 func WriteAllEntries(logEntries []LogEntry, c *config.Config) error {
@@ -144,7 +147,7 @@ func WriteAllEntries(logEntries []LogEntry, c *config.Config) error {
 	file.Truncate(0)
 
 	for _, entry := range logEntries {
-		logEntryString := generateLogFileEntry(&entry)
+		logEntryString := GenerateLogFileEntry(&entry)
 
 		_, err = file.WriteString(logEntryString)
 
