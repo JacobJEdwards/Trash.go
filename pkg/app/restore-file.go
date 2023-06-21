@@ -5,18 +5,30 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/JacobJEdwards/Trash.go/pkg/config"
+)
+
+var (
+	restoreMutex sync.Mutex
 )
 
 func RestoreFile(fileName string, c *config.Config) (*LogEntry, error) {
 	trashDir := c.TrashDir
 
 	trashedFiles, err := os.ReadDir(trashDir)
-
 	if err != nil {
 		return nil, err
 	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	restoreMutex.Lock()
+	defer restoreMutex.Unlock()
 
 	for _, trashedFile := range trashedFiles {
 
@@ -28,21 +40,14 @@ func RestoreFile(fileName string, c *config.Config) (*LogEntry, error) {
 
 			if err == nil {
 				err = os.Rename(trashPath, entry.OriginalPath)
-
 				if err != nil {
-					return nil, err
+                    errors <- err
 				}
 
 				return entry, nil
 			}
 
 			fmt.Printf("file %s not found in logs, moving to home\n", fileName)
-
-			homeDir, err := os.UserHomeDir()
-
-			if err != nil {
-				return nil, err
-			}
 
 			homePath := filepath.Join(homeDir, fileName)
 

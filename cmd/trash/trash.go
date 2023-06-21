@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/JacobJEdwards/Trash.go/pkg/app"
 	"github.com/JacobJEdwards/Trash.go/pkg/config"
@@ -136,8 +138,8 @@ func (cli *TrashCLI) restoreFile(file string) {
 		fmt.Printf("Error restoring file: %v\n", err)
 	}
 
-    fmt.Println("Restored:")
-    app.OutputLogEntry(fileEntry)
+	fmt.Println("Restored:")
+	app.OutputLogEntry(fileEntry)
 }
 
 func (cli *TrashCLI) deleteFile(file string) {
@@ -147,35 +149,54 @@ func (cli *TrashCLI) deleteFile(file string) {
 		fmt.Printf("Error deleting file: %v\n", err)
 	}
 
-    fmt.Println("Deleted:")
-    app.OutputLogEntry(fileEntry)
+	fmt.Println("Deleted:")
+	app.OutputLogEntry(fileEntry)
 }
 
 func (cli *TrashCLI) trashFiles(files []string) {
+
+	errCh := make(chan error)
+
+	var wg sync.WaitGroup
+
 	for _, fileName := range files {
+		wg.Add(1)
 
-		if _, err := os.Stat(fileName); err != nil {
-			fmt.Printf("Error using file: %v\n", err)
-			continue
-		}
+		go func(fileName string) {
+			defer wg.Done()
 
-		file, err := os.Open(fileName)
+			if _, err := os.Stat(fileName); err != nil {
+				errCh <- errors.New(fmt.Sprintf("Error using file: %v\n", err))
+				return
+			}
 
-		if err != nil {
-			fmt.Printf("Error using file: %v\n", err)
-			continue
-		}
+			file, err := os.Open(fileName)
 
-		defer file.Close()
+			if err != nil {
+				errCh <- errors.New(fmt.Sprintf("Error using file: %v\n", err))
+				return
+			}
 
-		err = app.TrashFile(file, cli.config)
+			defer file.Close()
 
-		if err != nil {
-			fmt.Printf("Error trashing file: %v\n", err)
-			return
-		}
+			err = app.TrashFile(file, cli.config)
 
-		fmt.Printf("Trashed %s\n", fileName)
+			if err != nil {
+				errCh <- errors.New(fmt.Sprintf("Error trashing file: %v\n", err))
+				return
+			}
+
+			fmt.Printf("Trashed %s\n", fileName)
+		}(fileName)
+
+		go func() {
+			for err := range errCh {
+				fmt.Println(err)
+			}
+		}()
+
+		wg.Wait()
+		close(errCh)
 	}
 }
 
@@ -214,4 +235,3 @@ func main() {
 
 	cli.Run()
 }
-

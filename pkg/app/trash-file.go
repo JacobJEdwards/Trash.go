@@ -3,25 +3,55 @@ package app
 import (
 	"errors"
 	"fmt"
-	"github.com/JacobJEdwards/Trash.go/pkg/config"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
+
+	"github.com/JacobJEdwards/Trash.go/pkg/config"
+)
+
+var (
+	mutex sync.Mutex
 )
 
 func TrashFiles(files []*os.File, c *config.Config) error {
+	var wg sync.WaitGroup
+	var errCh = make(chan error, len(files))
+
 	for _, file := range files {
+		wg.Add(1)
 
-		err := TrashFile(file, c)
+		go func(file *os.File) {
+			defer wg.Done()
+			err := TrashFile(file, c)
 
-		if err != nil {
-			return err
+			if err != nil {
+				errCh <- err
+			}
+		}(file)
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	if len(errCh) > 0 {
+		var sb strings.Builder
+
+		for err := range errCh {
+			sb.WriteString(fmt.Sprintf("%s\n", err))
 		}
+
+		return errors.New(sb.String())
 	}
 
 	return nil
 }
 
 func TrashFile(file *os.File, c *config.Config) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	// Get the path to the trash directory
 	fileName := filepath.Base(file.Name())
 

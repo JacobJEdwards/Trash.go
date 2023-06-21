@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/JacobJEdwards/Trash.go/pkg/config"
@@ -18,7 +19,14 @@ type LogEntry struct {
 	OriginalPath string
 }
 
+var (
+	logMu sync.Mutex
+)
+
 func SetLog(trashedFile *os.File, c *config.Config) error {
+	logMu.Lock()
+	defer logMu.Unlock()
+
 	logFile := c.Logfile
 
 	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -26,12 +34,17 @@ func SetLog(trashedFile *os.File, c *config.Config) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to open log file '%s': %v", logFile, err))
 	}
-
 	defer file.Close()
 
-	fileInfo, err := trashedFile.Stat()
+	writer := bufio.NewWriter(file)
 
-	if err != nil {
+	defer func() {
+		if err := writer.Flush(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	if _, err := trashedFile.Stat(); err != nil {
 		return errors.New(fmt.Sprintf("Failed to get file info for '%s': %v", trashedFile.Name(), err))
 	}
 
@@ -43,25 +56,25 @@ func SetLog(trashedFile *os.File, c *config.Config) error {
 
 	logEntry := LogEntry{
 		TrashTime:    time.Now(),
-		OriginalName: fileInfo.Name(),
+		OriginalName: trashedFile.Name(),
 		OriginalPath: absPath,
 	}
 
 	logEntryString := GenerateLogFileEntry(&logEntry)
 
-	_, err = file.WriteString(logEntryString)
-
+	_, err = writer.WriteString(logEntryString)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to write log entry to '%s': %v", logFile, err))
 	}
-
-	GetLog(c)
 
 	return file.Sync()
 }
 
 func GetLog(c *config.Config) ([]LogEntry, error) {
 	logFile := c.Logfile
+
+	logMu.Lock()
+	defer logMu.Unlock()
 
 	file, err := os.OpenFile(logFile, os.O_RDONLY|os.O_CREATE, 0775)
 
@@ -103,6 +116,8 @@ func GetLog(c *config.Config) ([]LogEntry, error) {
 }
 
 func RemoveLog(filename string, c *config.Config) (*LogEntry, error) {
+	logMu.Lock()
+	defer logMu.Unlock()
 
 	logEntries, err := GetLog(c)
 	var foundEntry LogEntry
@@ -134,6 +149,9 @@ func RemoveLog(filename string, c *config.Config) (*LogEntry, error) {
 }
 
 func WriteAllEntries(logEntries []LogEntry, c *config.Config) error {
+	logMu.Lock()
+	defer logMu.Unlock()
+
 	logFile := c.Logfile
 
 	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE, 0775)
@@ -146,14 +164,25 @@ func WriteAllEntries(logEntries []LogEntry, c *config.Config) error {
 
 	file.Truncate(0)
 
+	var newLogEntries string
+	var sb strings.Builder
+
 	for _, entry := range logEntries {
 		logEntryString := GenerateLogFileEntry(&entry)
 
-		_, err = file.WriteString(logEntryString)
+		sb.WriteString(logEntryString)
+	}
 
-		if err != nil {
-			return errors.New(fmt.Sprintf("Failed to write log entry to '%s': %v", logFile, err))
-		}
+	newLogEntries = sb.String()
+
+	if newLogEntries == "" {
+		return nil
+	}
+
+	_, err = file.WriteString(newLogEntries)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to write log entry to '%s': %v", logFile, err))
 	}
 
 	return file.Sync()
