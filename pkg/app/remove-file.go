@@ -15,7 +15,7 @@ func DeleteFile(filename string, c *config.Config) (*LogEntry, error) {
 	proceed := utils.ProceedTask(fmt.Sprintf("Are you sure you want to delete %s? [Y/N]", filename))
 
 	if !proceed {
-		return nil, errors.New("User aborted delete")
+		return nil, errors.New("user aborted delete")
 	}
 
 	trashedFiles, err := os.ReadDir(trashDir)
@@ -45,6 +45,6 @@ func DeleteFile(filename string, c *config.Config) (*LogEntry, error) {
 		}
 	}
 
-	return nil, errors.New("File not found in trash")
+	return nil, errors.New("file not found in trash")
 
 }

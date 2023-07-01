@@ -27,7 +27,12 @@ func SetLog(trashedFile *os.File, c *config.Config) error {
 		return errors.New(fmt.Sprintf("Failed to open log file '%s': %v", logFile, err))
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
 
 	fileInfo, err := trashedFile.Stat()
 
@@ -55,7 +60,10 @@ func SetLog(trashedFile *os.File, c *config.Config) error {
 		return errors.New(fmt.Sprintf("Failed to write log entry to '%s': %v", logFile, err))
 	}
 
-	GetLog(c)
+	_, err = GetLog(c)
+	if err != nil {
+		return err
+	}
 
 	return file.Sync()
 }
@@ -69,7 +77,12 @@ func GetLog(c *config.Config) ([]LogEntry, error) {
 		return nil, errors.New(fmt.Sprintf("Failed to open log file '%s': %v", logFile, err))
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
 
 	scanner := bufio.NewScanner(file)
 	var logEntries []LogEntry
@@ -142,9 +155,17 @@ func WriteAllEntries(logEntries []LogEntry, c *config.Config) error {
 		return errors.New(fmt.Sprintf("Failed to open log file '%s': %v", logFile, err))
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
 
-	file.Truncate(0)
+	err = file.Truncate(0)
+	if err != nil {
+		return err
+	}
 
 	for _, entry := range logEntries {
 		logEntryString := GenerateLogFileEntry(&entry)

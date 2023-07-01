@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,23 +37,37 @@ func LoadConfig() (*Config, error) {
 		return &c, nil
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
 	byteConfig, err := io.ReadAll(file)
 
 	if err != nil {
 		return &c, err
 	}
 
-	json.Unmarshal(byteConfig, &c)
+	err = json.Unmarshal(byteConfig, &c)
+	if err != nil {
+		return nil, err
+	}
 
 	if c.TrashDir == "" {
 		c.TrashDir = filepath.Join(os.Getenv("HOME"), "/.go-trash")
-		c.SaveConfig()
+		err := c.SaveConfig()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if c.Logfile == "" {
 		c.Logfile = filepath.Join(os.Getenv("HOME"), "/.go-trash.log")
-		c.SaveConfig()
+		err := c.SaveConfig()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = c.ValidateConfig()
@@ -74,17 +87,23 @@ func (c *Config) createConfig() error {
 
 	if c.TrashDir == "" {
 		c.TrashDir = filepath.Join(os.Getenv("HOME"), "/.go-trash")
-		c.SaveConfig()
+		err := c.SaveConfig()
+		if err != nil {
+			return err
+		}
 	}
 
 	if c.Logfile == "" {
 		c.Logfile = filepath.Join(os.Getenv("HOME"), "/.go-trash.log")
-		c.SaveConfig()
+		err := c.SaveConfig()
+		if err != nil {
+			return err
+		}
 	}
 
 	err = os.MkdirAll(c.TrashDir, 0755)
 	if err != nil {
-		return fmt.Errorf("Error creating trash directory: %v", err)
+		return fmt.Errorf("error creating trash directory: %v", err)
 	}
 
 	err = createConfigFile(c)
@@ -102,18 +121,23 @@ func (c *Config) SaveConfig() error {
 		return err
 	}
 
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
 
 	byteConfig, err := json.MarshalIndent(c, "", "  ")
 
 	if err != nil {
-		return fmt.Errorf("Error creating config file: %v", err)
+		return fmt.Errorf("error creating config file: %v", err)
 	}
 
-	err = ioutil.WriteFile(configPath, byteConfig, 0644)
+	err = os.WriteFile(configPath, byteConfig, 0644)
 
 	if err != nil {
-		return fmt.Errorf("Error writing config file: %v", err)
+		return fmt.Errorf("error writing config file: %v", err)
 	}
 
 	return nil
@@ -122,7 +146,7 @@ func (c *Config) SaveConfig() error {
 func createConfigDirectory() error {
 	err := os.MkdirAll(configDir, 0755)
 	if err != nil {
-		return fmt.Errorf("Error creating config directory: %v", err)
+		return fmt.Errorf("error creating config directory: %v", err)
 	}
 	return nil
 }
@@ -130,11 +154,11 @@ func createConfigDirectory() error {
 func createConfigFile(c *Config) error {
 	byteConfig, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Error creating config file: %v", err)
+		return fmt.Errorf("error creating config file: %v", err)
 	}
-	err = ioutil.WriteFile(configPath, byteConfig, 0644)
+	err = os.WriteFile(configPath, byteConfig, 0644)
 	if err != nil {
-		return fmt.Errorf("Error writing config file: %v", err)
+		return fmt.Errorf("error writing config file: %v", err)
 	}
 	return nil
 }
@@ -143,7 +167,7 @@ func (c *Config) ResetConfig() (*Config, error) {
 	err := os.Remove(configPath)
 
 	if err != nil {
-		return c, fmt.Errorf("Error removing config file: %v", err)
+		return c, fmt.Errorf("error removing config file: %v", err)
 	}
 	err = c.createConfig()
 	if err != nil {

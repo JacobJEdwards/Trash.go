@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/JacobJEdwards/Trash.go/pkg/app"
-	"github.com/JacobJEdwards/Trash.go/pkg/config"
+	cfg "github.com/JacobJEdwards/Trash.go/pkg/config"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 )
 
 type TrashCLI struct {
-	config *config.Config
+	config *cfg.Config
 }
 
 func init() {
@@ -44,7 +44,7 @@ func init() {
 }
 
 func NewTrashCLI() (*TrashCLI, error) {
-	config, err := config.LoadConfig()
+	config, err := cfg.LoadConfig()
 
 	if err != nil {
 		return nil, err
@@ -136,8 +136,8 @@ func (cli *TrashCLI) restoreFile(file string) {
 		fmt.Printf("Error restoring file: %v\n", err)
 	}
 
-    fmt.Println("Restored:")
-    app.OutputLogEntry(fileEntry)
+	fmt.Println("Restored:")
+	app.OutputLogEntry(fileEntry)
 }
 
 func (cli *TrashCLI) deleteFile(file string) {
@@ -147,36 +147,54 @@ func (cli *TrashCLI) deleteFile(file string) {
 		fmt.Printf("Error deleting file: %v\n", err)
 	}
 
-    fmt.Println("Deleted:")
-    app.OutputLogEntry(fileEntry)
+	fmt.Println("Deleted:")
+	app.OutputLogEntry(fileEntry)
 }
 
 func (cli *TrashCLI) trashFiles(files []string) {
 	for _, fileName := range files {
 
-		if _, err := os.Stat(fileName); err != nil {
-			fmt.Printf("Error using file: %v\n", err)
-			continue
-		}
-
-		file, err := os.Open(fileName)
+		err := cli.trashFile(fileName)
 
 		if err != nil {
 			fmt.Printf("Error using file: %v\n", err)
 			continue
-		}
-
-		defer file.Close()
-
-		err = app.TrashFile(file, cli.config)
-
-		if err != nil {
-			fmt.Printf("Error trashing file: %v\n", err)
-			return
 		}
 
 		fmt.Printf("Trashed %s\n", fileName)
 	}
+}
+
+func (cli *TrashCLI) trashFile(fileName string) error {
+
+	if _, err := os.Stat(fileName); err != nil {
+		fmt.Printf("Error using file: %v\n", err)
+		return err
+	}
+
+	file, err := os.Open(fileName)
+
+	if err != nil {
+		fmt.Printf("Error using file: %v\n", err)
+		return err
+	}
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
+
+	err = app.TrashFile(file, cli.config)
+
+	if err != nil {
+		fmt.Printf("Error trashing file: %v\n", err)
+		return err
+	}
+
+	return nil
+
 }
 
 func printUsage() {
@@ -214,4 +232,3 @@ func main() {
 
 	cli.Run()
 }
-
